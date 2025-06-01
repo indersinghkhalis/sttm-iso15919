@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>BaniDB Shabad → ISO 15919 (With URL Input)</title>
+  <title>BaniDB Shabad → ISO 15919 (Custom Transliterator)</title>
 
   <style>
     body {
@@ -17,12 +17,12 @@
     }
     input {
       width: calc(100% - 1rem);
-      padding: 0.3rem;
-      margin: 0.3rem 0;
+      padding: 0.4rem;
+      margin: 0.4rem 0;
       box-sizing: border-box;
     }
     button {
-      padding: 0.4rem 0.7rem;
+      padding: 0.5rem 0.8rem;
       cursor: pointer;
       font-size: 1rem;
     }
@@ -50,553 +50,213 @@
     <input type="number" id="shabadId" placeholder="145" min="1" />
 
     <label for="sttmUrl">Or paste SikhItotheMax URL:</label>
-    <input type="text" id="sttmUrl" placeholder="https://www.sikhitothemax.org/shabad?id=2825" />
+    <input type="text" id="sttmUrl"
+      placeholder="https://www.sikhitothemax.org/shabad?id=2825" />
 
     <button id="goBtn">Go</button>
-  </div>
-
-  <div id="notice">
-    (If you paste a URL, it will extract “id” automatically. Otherwise, enter the numeric ID above.)
   </div>
 
   <div id="output">Enter a Shabad ID or URL above and click “Go.”</div>
 
   <script>
-    /**
-     * Embedded Sanscript v0.0.2
-     */
-    (function(Sanscript) {
-        "use strict";
+    // ─────────────────────────────────────────────────────────────────────────────
+    // ① CUSTOM GURMUKHI→ISO 15919 MAPPINGS (per Wikipedia ISO 15919 table)
+    // ─────────────────────────────────────────────────────────────────────────────
 
-        Sanscript.defaults = {
-            skip_sgml: false,
-            syncope: false
-        };
+    // Independent vowels (U+0A05…U+0A14, U+0A0B)
+    const independentVowelMap = {
+      '\u0A05': 'a',   // ਅ
+      '\u0A06': 'ā',   // ਆ
+      '\u0A07': 'i',   // ਇ
+      '\u0A08': 'ī',   // ਈ
+      '\u0A09': 'u',   // ਉ
+      '\u0A0A': 'ū',   // ਊ
+      '\u0A0B': 'ṛ',   // ਋
+      '\u0A0F': 'ē',   // ਏ
+      '\u0A10': 'ai',  // ਐ
+      '\u0A13': 'ō',   // ਓ
+      '\u0A14': 'au'   // ਔ
+    };
 
-        var schemes = Sanscript.schemes = {
-            bengali: {
-                vowels: 'অ আ ই ঈ উ ঊ ঋ ৠ ঌ ৡ  এ ঐ  ও ঔ'.split(' '),
-                vowel_marks: 'া ি ী ু ূ ৃ ৄ ৢ ৣ  ে ৈ  ো ৌ'.split(' '),
-                other_marks: 'ং ঃ ঁ'.split(' '),
-                virama: ['্'],
-                consonants: 'ক খ গ ঘ ঙ চ ছ জ ঝ ঞ ট ঠ ড ঢ ণ ত থ দ ধ ন প ফ ব ভ ম য র ল ব শ ষ স হ ळ ক্ষ জ্ঞ'.split(' '),
-                symbols: '০ ১ ২ ৩ ৪ ৫ ৬ ৭ ৮ ৯ ॐ ঽ । ॥'.split(' '),
-                other: '    ড ঢ  য '.split(' ')
-            },
-            devanagari: {
-                vowels: 'अ आ इ ई उ ऊ ऋ ॠ ऌ ॡ ऎ ए ऐ ऒ ओ औ'.split(' '),
-                vowel_marks: 'ा ि ी ु ू ृ ॄ ॢ ॣ ॆ े ै ॊ ो ौ'.split(' '),
-                other_marks: 'ं ः ँ'.split(' '),
-                virama: ['्'],
-                consonants: 'क ख ग घ ङ च छ ज झ ञ ट ठ ड ढ ण त थ द ध न प फ ब भ म य र ल व श ष स ह ळ क्ष ज्ञ'.split(' '),
-                symbols: '० १ २ ३ ४ ५ ६ ७ ८ ९ ॐ ऽ । ॥'.split(' '),
-                zwj: ['\u200D'],
-                skip: [''],
-                accent: ['\u0951', '\u0952'],
-                combo_accent: 'ः॑ ः॒ ं॑ ं॒'.split(' '),
-                candra: ['ॅ'],
-                other: 'क़ ख़ ग़ ज़ ड़ ढ़ फ़ य़ ऱ'.split(' ')
-            },
-            gujarati: {
-                vowels: 'અ આ ઇ ઈ ઉ ઊ ઋ ૠ ઌ ૡ  એ ઐ  ઓ ઔ'.split(' '),
-                vowel_marks: 'ા િ ી ુ ૂ ૃ ૄ ૢ ૣ  ે ૈ  ો ૌ'.split(' '),
-                other_marks: 'ં ઃ ઁ'.split(' '),
-                virama: ['્'],
-                consonants: 'ક ખ ગ ઘ ઙ ચ છ જ ઝ ઞ ટ ઠ ડ ઢ ણ ત થ દ ધ ನ ಪ ಫ ಬ ಭ ಮ ಯ ರ ಲ ವ શ ष ಸ ह ळ क्ष जञ'.split(' '),
-                symbols: '૦ ૧ ૨ ૩ ૪ ૫ ૬ ૭ ૮ ૯ ૐ ઽ ૤ ૥'.split(' '),
-                candra: ['ૅ']
-            },
-            gurmukhi: {
-                vowels: 'ਅ ਆ ਇ ਈ ਉ ਊ      ਏ ਐ  ਓ ਔ'.split(' '),
-                vowel_marks: 'ਾ ਿ ੀ ੁ ੂ      ੇ ੈ  ੋ ੌ'.split(' '),
-                other_marks: 'ਂ ਃ ਁ'.split(' '),
-                virama: ['੍'],
-                consonants: 'ਕ ਖ ਗ ਘ ਙ ਚ ਛ ਜ ਝ ਞ ਟ ਠ ਡ ਢ ण ਤ ਥ ਦ ਧ ਨ ਪ ਫ ਬ ਭ ਮ ਯ ਰ ਲ ਵ ਸ਼ ਸ਼ ਸ ਹ ਲ਼ ਕ੍ਸ਼ ਜ੍ਞ'.split(' '),
-                symbols: '੦ ੧ ੨ ੩ ੪ ੫ ੬ ੭ ੮ ੯ ॐ ऽ । ॥'.split(' '),
-                other: ' ਖ ਗ ਜ ਡ  ਫ  '.split(' ')
-            },
-            kannada: {
-                vowels: 'అ ఆ ఇ ఈ ఉ ఊ ఋ ೠ ಌ ೡ ಎ ಏ ಐ ಒ ಓ ఔ'.split(' '),
-                vowel_marks: 'ಾ ि ೀ ು ೂ ृ ॄ ॢ ॣ े ೇ ै ೊ ೋ ೌ'.split(' '),
-                other_marks: 'ಂ ः ँ'.split(' '),
-                virama: ['್'],
-                consonants: 'క ఖ గ ఘ ఙ チ छ ज झ ञ ट ಠ ड ढ ण त थ द ध ন প फ़ ব ভ ম य র ल व श ष স হ ळ क्ष जञ'.split(' '),
-                symbols: '೦ ೧ ೨ ೩ ೪ ೫ ೬ ೭ ೮ ೯ ಓಂ ऽ । ॥'.split(' '),
-                other: '      ಫ  ಱ'.split(' ')
-            },
-            malayalam: {
-                vowels: 'അ ആ ഇ ഈ ഉ ഊ ഋ ൠ ഌ ൡ എ ഏ ഐ ഒ ഓ ഔ'.split(' '),
-                vowel_marks: 'ാ ि ീ ു ূ ृ ॄ ॢ ॣ െ േ ൈ ൊ ോ ൌ'.split(' '),
-                other_marks: 'ം ः ँ'.split(' '),
-                virama: ['്'],
-                consonants: 'क খ গ ঘ ङ च छ ज झ ञ ट ಠ ड ढ ण त थ द ध न ಪ फ़ ব ভ म य র ल व श ष স ह ळ क्ष जञ'.split(' '),
-                symbols: '൦ ൧ ൨ ൩ ൪ ൫ ൬ ൭ ൮ ൯ ഓം ऽ । ॥'.split(' '),
-                other: '        റ'.split(' ')
-            },
-            oriya: {
-                vowels: 'ଅ ଆ ଇ ଈ ଉ ଊ ଋ ୠ ଌ ୡ  ए ऐ  ओ औ'.split(' '),
-                vowel_marks: 'ା ि ୀ ु ୂ ृ ॄ ॢ ୣ े ै ॊ ो ौ'.split(' '),
-                other_marks: 'ଂ ः ँ'.split(' '),
-                virama: ['୍'],
-                consonants: 'क ख ग घ ङ চ छ ज झ ञ ट ठ ड ढ ण त थ द ध न پ फ़ ਵ श ष ਸ ह ळ क्ष जञ'.split(' '),
-                symbols: '୦ ୧ ୨ ୩ ୪ ୫ ୬ ୭ ୮ ୯ ओं ऽ । ॥'.split(' '),
-                other: '    ड ढ  य '.split(' ')
-            },
-            tamil: {
-                vowels: 'அ ਆ ఇ ఈ ఉ ఊ     ఎ ஏ ஐ ఒ ఓ ஔ'.split(' '),
-                vowel_marks: 'ா ि ी ु ू     े ै ॊ ो ौ'.split(' '),
-                other_marks: 'ஂ ः '.split(' '),
-                virama: ['்'],
-                consonants: 'க க க க ङ চ চ छ জ ঝ ঞ ट ಠ ड ढ ण ਤ थ द ध न प फ़ ব ভ म य র ल व श ष स ह ଳ क्ष जञ'.split(' '),
-                symbols: '௦ ௧ ௨ ൩ ఴ ൫ ൬ ൭ ൮ ൯ ॐ ऽ । ॥'.split(' '),
-                other: '        ற'.split(' ')
-            },
-            telugu: {
-                vowels: 'అ ఆ ఇ ఈ ఉ ఊ ಋ ౠ ఌ ౡ ಎ ಏ ಐ ఒ ಓ ఔ'.split(' '),
-                vowel_marks: 'ా ि ी ु ੂ ृ ॄ ॢ ॣ े ే ै ొ ो ौ'.split(' '),
-                other_marks: 'ం ः ँ'.split(' '),
-                virama: ['్'],
-                consonants: 'క ఖ గ ఘ ఙ च छ ज झ ञ ट ಠ డ ढ ण ਤ थ द ध न प फ़ ਬ ਭ ਮ ய ர ல வ श ष স ह Ŵ क्ष जञ'.split(' '),
-                symbols: '౦ ౧ ౨ ౩ ൪ ൫ ൬ ൭ ൮ ൯ ఓం ऽ । ॥'.split(' '),
-                other: '        ఱ'.split(' ')
-            },
-            iast: {
-                vowels: 'a ā i ī u ū ṛ ॠ ḷ ऌ ḹ e ē ai o ō au'.split(' '),
-                other_marks: ['ṃ', 'ḥ', '~'],
-                virama: [''],
-                consonants: 'क ख ग घ ङ च छ ज झ ञ ट ठ ड ढ ण त थ द ध न प फ़ ব ভ ম य র ল व श ष स ह ळ क्ष जञ'.split(' '),
-                symbols: "0 1 2 3 4 5 6 7 8 9 oṃ ' । ॥".split(' ')
-            },
-            itrans: {
-                vowels: 'a A i I उ ū RRi RRI LLi LLI e ai o au'.split(' '),
-                other_marks: ['M', 'H', '.N'],
-                virama: [''],
-                consonants: 'क ख ग घ Ñ চ छ জ झ Ñ ট ঠ ड ढ Ñ త थ द ध न प फ़ ব ভ म य র ল व श ष স ह ళ क्ष जञ'.split(' '),
-                symbols: '0 1 2 3 4 5 6 7 8 9 OM .a | ||'.split(' '),
-                candra: ['.c'],
-                zwj: ['{}'],
-                skip: '_',
-                accent: ["\\'", "\\_"],
-                combo_accent: "\\'H \\_H \\'M \\_M".split(' '),
-                other: 'q K G z .D .Dh f Y R'.split(' ')
-            },
-            hk: {
-                vowels: 'a A i I उ ū R RR lR lRR e ai o au'.split(' '),
-                other_marks: 'M H ~'.split(' '),
-                virama: [''],
-                consonants: 'क ख ग घ ङ च छ ज झ ञ ट ठ ड ढ ण त थ द ध न ப śṣ स ह ळ क्ष जञ'.split(' '),
-                symbols: "0 1 2 3 4 5 6 7 8 9 OM ' | ||".split(' ')
-            },
-            slp1: {
-                vowels: 'a A i I उ ū f F x X e E o O'.split(' '),
-                other_marks: 'M H ~'.split(' '),
-                virama: [''],
-                consonants: 'क ख ग घ ङ چ छ ज झ ञ ट ठ ड ढ ण त थ द ध न प फ़ ব ভ ম य ر ल व śṣ स ह ळ क्ष जञ'.split(' '),
-                symbols: "0 1 2 3 4 5 6 7 8 9 oM ' . ..".split(' ')
-            },
-            velthuis: {
-                vowels: 'a aa i ii उ ū .r .rr .li .ll e ai o au'.split(' '),
-                other_marks: '.m .h '.split(' '),
-                virama: [''],
-                consonants: 'क ख ग घ ङ চ ছ ज झ Ñ ट ٹھ ড ढ Ñ त थ द ध न प फ़ ব ভ ম य ר ल व ś ṣ স ह ल क्ष जञ'.split(' '),
-                symbols: "0 1 2 3 4 5 6 7 8 9 o.m ' | ||".split(' '),
-                other: ''
-            },
-            wx: {
-                vowels: 'a A i I उ ū q Q L e E o O'.split(' '),
-                other_marks: 'M H z'.split(' '),
-                virama: [''],
-                consonants: 'क ख ग घ ङ চ छ ज झ Ñ ट ಠ ड ढ ण त थ द ध न प फ़ ব ভ ম य र ल व ś ṣ स ह ল क्ष जञ'.split(' '),
-                symbols: "0 1 2 3 4 5 6 7 8 9 oM ' | ||".split(' ')
-            }
-        },
+    // Consonants (core Gurmukhi consonants, each with inherent "a")
+    const consonantMap = {
+      '\u0A15': 'k',   // ਕ
+      '\u0A16': 'kh',  // ਖ
+      '\u0A17': 'g',   // ਗ
+      '\u0A18': 'gh',  // ਘ
+      '\u0A19': 'ṅ',   // ਙ
+      '\u0A1A': 'c',   // ਚ
+      '\u0A1B': 'ch',  // ਛ
+      '\u0A1C': 'j',   // ਜ
+      '\u0A1D': 'jh',  // ਝ
+      '\u0A1E': 'ñ',   // ਞ
+      '\u0A1F': 'ṭ',   // ਟ
+      '\u0A20': 'ṭh',  // ઠ
+      '\u0A21': 'ḍ',   // ਡ
+      '\u0A22': 'ḍh',  // ઢ
+      '\u0A23': 'ṇ',   // ਣ
+      '\u0A24': 't',   // ਤ
+      '\u0A25': 'th',  // થ
+      '\u0A26': 'd',   // ਦ
+      '\u0A27': 'dh',  // ধ
+      '\u0A28': 'n',   // ਨ
+      '\u0A2A': 'p',   // ਪ
+      '\u0A2B': 'ph',  // ਫ
+      '\u0A2C': 'b',   // ਬ
+      '\u0A2D': 'bh',  // ਭ
+      '\u0A2E': 'm',   // ਮ
+      '\u0A2F': 'y',   // ਯ
+      '\u0A30': 'r',   // ਰ
+      '\u0A32': 'l',   // ਲ
+      '\u0A33': 'ḷ',   // ਲ਼
+      '\u0A35': 'v',   // ਵ
+      '\u0A36': 'ś',   // ਸ਼
+      '\u0A38': 's',   // ਸ
+      '\u0A39': 'h'    // ਹ
+    };
 
-        romanSchemes = {},
+    // Dependent vowel signs (U+0A3E..U+0A4C, U+0A43..U+0A44)
+    const vowelSignMap = {
+      '\u0A3E': 'ā',   // ◌ਾ  (sign for ਆ)
+      '\u0A3F': 'i',   // ◌ਿ  (sign for ਇ)
+      '\u0A40': 'ī',   // ◌ੀ  (sign for ਈ)
+      '\u0A41': 'u',   // ◌ੁ  (sign for ਉ)
+      '\u0A42': 'ū',   // ◌ੂ  (sign for ਊ)
+      '\u0A43': 'ṛ',   // ◌੃  (sign for ਋)
+      '\u0A44': 'ṝ',   // ◌੄  (sign for ੠)
+      '\u0A47': 'ē',   // ◌ੇ  (sign for ਏ)
+      '\u0A48': 'ai',  // ◌ੈ  (sign for ਐ)
+      '\u0A4B': 'ō',   // ◌ੋ  (sign for ਓ)
+      '\u0A4C': 'au'   // ◌ੌ  (sign for ਔ)
+    };
 
-        allAlternates = {
-            itrans: {
-                A: ['aa'],
-                I: ['ii', 'ee'],
-                U: ['uu', 'oo'],
-                RRi: ['R^i'],
-                RRI: ['R^I'],
-                LLi: ['L^i'],
-                LLI: ['L^I'],
-                M: ['.m', '.n'],
-                '~N': ['N^'],
-                ch: ['c'],
-                Ch: ['C', 'chh'],
-                '~n': ['JN'],
-                v: ['w'],
-                Sh: ['S', 'shh'],
-                kSh: ['kS', 'x'],
-                'j~n': ['GY', 'dny'],
-                OM: ['AUM'],
-                "\\_": ["\\`"],
-                "\\_H": ["\\`H"],
-                "\\'M": ["\\'.m", "\\'.n"],
-                "\\_M": "\\_.m \\_.n \\`M \\`.m \\`.n".split(' '),
-                ".a": ['~'],
-                '|': ['.'],
-                '||': ['..'],
-                z: ['J']
-            }
-        },
+    // Diacritics and nukta/virama (anusvara, visarga, candrabindu, halant)
+    const diacriticMap = {
+      '\u0A01': 'ṃ',   // candrabindu ◌ਁ
+      '\u0A02': 'ṃ',   // anusvāra ◌ਂ
+      '\u0A03': 'ḥ',   // visarga ◌ਃ
+      '\u0A4D': '',    // virama ◌੍  (remove the inherent 'a')
+    };
 
-        cache = {};
+    // Everything else (punctuation, spaces, digits) passes unchanged.
 
-        Sanscript.isRomanScheme = function(name) {
-            return romanSchemes.hasOwnProperty(name);
-        };
+    // ──────────────────────────────────────────────────────────────────────────
+    // ② GURMUKHI → ISO 15919 TRANSLITERATOR FUNCTION
+    // ──────────────────────────────────────────────────────────────────────────
 
-        Sanscript.addBrahmicScheme = function(name, scheme) {
-            Sanscript.schemes[name] = scheme;
-        };
+    function transliterateGurmukhiToISO(input) {
+      const output = [];
+      let lastWasConsonant = false;
 
-        Sanscript.addRomanScheme = function(name, scheme) {
-            if (!('vowel_marks' in scheme)) {
-                scheme.vowel_marks = scheme.vowels.slice(1);
-            }
-            Sanscript.schemes[name] = scheme;
-            romanSchemes[name] = true;
-        };
+      // Iterate over codepoints (handles combined chars correctly)
+      for (const ch of input) {
+        if (independentVowelMap[ch]) {
+          // A standalone independent vowel
+          output.push(independentVowelMap[ch]);
+          lastWasConsonant = false;
 
-        var cheapCopy = function(scheme) {
-            var copy = {};
-            for (var key in scheme) {
-                if (!scheme.hasOwnProperty(key)) continue;
-                copy[key] = scheme[key].slice(0);
-            }
-            return copy;
-        };
+        } else if (consonantMap[ch]) {
+          // A consonant: emit base + 'a' (inherent vowel) for now
+          output.push(consonantMap[ch] + 'a');
+          lastWasConsonant = true;
 
-        (function() {
-            var kolkata = schemes.kolkata = cheapCopy(schemes.iast),
-                schemeNames = 'iast itrans hk kolkata slp1 velthuis wx'.split(' ');
-            kolkata.vowels = 'a ā i ī उ ū ṛ ॠ ऌ ḹ e ē ai o स au'.split(' ');
+        } else if (vowelSignMap[ch]) {
+          // A dependent vowel sign: combine with previous consonant
+          if (lastWasConsonant && output.length > 0) {
+            // Replace trailing "…a" with "…(vowel)"
+            const prev = output.pop();
+            // Remove exactly one trailing 'a'
+            const base = prev.endsWith('a') ? prev.slice(0, -1) : prev;
+            output.push(base + vowelSignMap[ch]);
+          } else {
+            // No consonant to attach: treat as independent (fallback)
+            output.push(vowelSignMap[ch]);
+          }
+          lastWasConsonant = false;
 
-            for (var i = 0, name; (name = schemeNames[i]); i++) {
-                Sanscript.addRomanScheme(name, schemes[name]);
-            }
+        } else if (diacriticMap[ch] !== undefined) {
+          // A diacritic: append its mapping (or drop in case of virama)
+          if (ch === '\u0A4D' && lastWasConsonant && output.length > 0) {
+            // Remove trailing 'a' from previous consonant (explicit virama)
+            const prev = output.pop();
+            const base = prev.endsWith('a') ? prev.slice(0, -1) : prev;
+            output.push(base);
+          } else if (diacriticMap[ch]) {
+            output.push(diacriticMap[ch]);
+          }
+          lastWasConsonant = false;
 
-            var itrans_dravidian = cheapCopy(schemes.itrans);
-            itrans_dravidian.vowels = 'a A i I उ ū Ri RRI LLi LLi e E ai o O au'.split(' ');
-            itrans_dravidian.vowel_marks = itrans_dravidian.vowels.slice(1);
-            allAlternates.itrans_dravidian = allAlternates.itrans;
-            Sanscript.addRomanScheme('itrans_dravidian', itrans_dravidian);
-        }());
+        } else {
+          // Any other character: pass unchanged (spaces, punctuation, digits)
+          output.push(ch);
+          lastWasConsonant = false;
+        }
+      }
 
-        var makeMap = function(from, to, options) {
-            var alternates = allAlternates[from] || {},
-                consonants = {},
-                fromScheme = Sanscript.schemes[from],
-                letters = {},
-                tokenLengths = [],
-                marks = {},
-                toScheme = Sanscript.schemes[to];
-
-            for (var group in fromScheme) {
-                if (!fromScheme.hasOwnProperty(group)) continue;
-                var fromGroup = fromScheme[group],
-                    toGroup = toScheme[group];
-                if (toGroup === undefined) continue;
-                for (var i = 0; i < fromGroup.length; i++) {
-                    var F = fromGroup[i],
-                        T = toGroup[i],
-                        alts = alternates[F] || [],
-                        numAlts = alts.length,
-                        j = 0;
-
-                    tokenLengths.push(F.length);
-                    for (j = 0; j < numAlts; j++) {
-                        tokenLengths.push(alts[j].length);
-                    }
-
-                    if (group === 'vowel_marks' || group === 'virama') {
-                        marks[F] = T;
-                        for (j = 0; j < numAlts; j++) {
-                            marks[alts[j]] = T;
-                        }
-                    } else {
-                        letters[F] = T;
-                        for (j = 0; j < numAlts; j++) {
-                            letters[alts[j]] = T;
-                        }
-                        if (group === 'consonants' || group === 'other') {
-                            consonants[F] = T;
-                            for (j = 0; j < numAlts; j++) {
-                                consonants[alts[j]] = T;
-                            }
-                        }
-                    }
-                }
-            }
-
-            return {
-                consonants: consonants,
-                fromRoman: Sanscript.isRomanScheme(from),
-                letters: letters,
-                marks: marks,
-                maxTokenLength: Math.max.apply(Math, tokenLengths),
-                toRoman: Sanscript.isRomanScheme(to),
-                virama: toScheme.virama
-            };
-        };
-
-        var transliterateRoman = function(data, map, options) {
-            var buf = [],
-                consonants = map.consonants,
-                dataLength = data.length,
-                hadConsonant = false,
-                letters = map.letters,
-                marks = map.marks,
-                maxTokenLength = map.maxTokenLength,
-                optSyncope = options.syncope,
-                tempLetter,
-                tempMark,
-                tokenBuffer = '',
-                toRoman = map.toRoman,
-                transliterationEnabled = true,
-                virama = map.virama;
-
-            for (var i = 0, L; (L = data.charAt(i)) || tokenBuffer; i++) {
-                var difference = maxTokenLength - tokenBuffer.length;
-                if (difference > 0 && i < dataLength) {
-                    tokenBuffer += L;
-                    if (difference > 1) continue;
-                }
-
-                for (var j = 0; j < maxTokenLength; j++) {
-                    var token = tokenBuffer.substr(0, maxTokenLength - j);
-
-                    if (token === '##') {
-                        transliterationEnabled = !transliterationEnabled;
-                        tokenBuffer = tokenBuffer.substr(2);
-                        break;
-                    }
-                    if ((tempLetter = letters[token]) !== undefined && transliterationEnabled) {
-                        if (toRoman) {
-                            buf.push(tempLetter);
-                        } else {
-                            if (hadConsonant) {
-                                if ((tempMark = marks[token])) {
-                                    buf.push(tempMark);
-                                } else if (token !== 'a') {
-                                    buf.push(virama);
-                                    buf.push(tempLetter);
-                                }
-                            } else {
-                                buf.push(tempLetter);
-                            }
-                            hadConsonant = token in consonants;
-                        }
-                        tokenBuffer = tokenBuffer.substr(maxTokenLength - j);
-                        break;
-                    } else if (j === maxTokenLength - 1) {
-                        if (hadConsonant) {
-                            hadConsonant = false;
-                            if (!optSyncope) buf.push(virama);
-                        }
-                        buf.push(token);
-                        tokenBuffer = tokenBuffer.substr(1);
-                    }
-                }
-            }
-            if (hadConsonant && !optSyncope) buf.push(virama);
-            return buf.join('');
-        };
-
-        var transliterateBrahmic = function(data, map, options) {
-            var buf = [],
-                consonants = map.consonants,
-                danglingHash = false,
-                hadRomanConsonant = false,
-                letters = map.letters,
-                marks = map.marks,
-                temp,
-                toRoman = map.toRoman,
-                transliterationEnabled = true;
-
-            for (var i = 0, L; (L = data.charAt(i)); i++) {
-                if (L === '#') {
-                    if (danglingHash) {
-                        transliterationEnabled = !transliterationEnabled;
-                        danglingHash = false;
-                    } else {
-                        danglingHash = true;
-                    }
-                    if (hadRomanConsonant) {
-                        buf.push('a');
-                        hadRomanConsonant = false;
-                    }
-                    continue;
-                } else if (!transliterationEnabled) {
-                    buf.push(L);
-                    continue;
-                }
-
-                if ((temp = marks[L]) !== undefined) {
-                    buf.push(temp);
-                    hadRomanConsonant = false;
-                } else {
-                    if (danglingHash) {
-                        buf.push('#');
-                        danglingHash = false;
-                    }
-                    if (hadRomanConsonant) {
-                        buf.push('a');
-                        hadRomanConsonant = false;
-                    }
-
-                    if ((temp = letters[L])) {
-                        buf.push(temp);
-                        hadRomanConsonant = toRoman && (L in consonants);
-                    } else {
-                        buf.push(L);
-                    }
-                }
-            }
-            if (hadRomanConsonant) buf.push('a');
-            return buf.join('');
-        };
-
-        Sanscript.t = function(data, from, to, options) {
-            options = options || {};
-            var cachedOptions = cache.options || {},
-                defaults = Sanscript.defaults,
-                hasPriorState = (cache.from === from && cache.to === to),
-                map;
-
-            for (var key in defaults) {
-                if (defaults.hasOwnProperty(key)) {
-                    var value = defaults[key];
-                    if (key in options) value = options[key];
-                    options[key] = value;
-                    if (value !== cachedOptions[key]) hasPriorState = false;
-                }
-            }
-
-            if (hasPriorState) {
-                map = cache.map;
-            } else {
-                map = makeMap(from, to, options);
-                cache = { from: from, map: map, options: options, to: to };
-            }
-
-            if (options.skip_sgml) data = data.replace(/(<.*?>)/g, '##$1##');
-
-            if (from === 'itrans') {
-                data = data.replace(/\{\\m\+\}/g, ".h.N");
-                data = data.replace(/\.h/g, '');
-                data = data.replace(/\\([^'`_]|$)/g, "##$1##");
-            }
-
-            if (map.fromRoman) {
-                return transliterateRoman(data, map, options);
-            } else {
-                return transliterateBrahmic(data, map, options);
-            }
-        };
-    }(window.Sanscript = window.Sanscript || {}));
-  </script>
-
-  <script>
-    // Verify Sanscript loaded
-    if (typeof Sanscript === 'undefined' || !Sanscript.t) {
-      document.getElementById('output').textContent =
-        '❌ Error: Embedded Sanscript.js failed to load.';
-      throw new Error('Sanscript.js not found');
+      return output.join('');
     }
 
-    // Check if “gurmukhi” scheme exists
-    const hasGurmukhi = !!Sanscript.schemes.gurmukhi;
-    if (!hasGurmukhi) {
-      console.warn(
-        '⚠️ Sanscript v0.0.2 does not include a "gurmukhi" scheme. ' +
-        'Falling back to JSON transliteration.en.'
-      );
-    }
+    // ──────────────────────────────────────────────────────────────────────────
+    // ③ MAIN LOGIC: Fetch JSON, Apply Transliteration, Display
+    // ──────────────────────────────────────────────────────────────────────────
 
-    (function() {
-      const goBtn       = document.getElementById('goBtn');
-      const shabadInput = document.getElementById('shabadId');
-      const sttmUrl     = document.getElementById('sttmUrl');
+    document.getElementById('goBtn').addEventListener('click', () => {
+      const shabadInput = document.getElementById('shabadId').value.trim();
+      const sttmUrl     = document.getElementById('sttmUrl').value.trim();
       const outputDiv   = document.getElementById('output');
+      let idValue = '';
 
-      goBtn.addEventListener('click', () => {
-        let idValue = '';
-
-        // 1. If STTM URL field has content, try to extract "id" query param
-        const urlText = sttmUrl.value.trim();
-        if (urlText) {
-          try {
-            const parsed = new URL(urlText);
-            const qid = parsed.searchParams.get('id');
-            if (qid && /^\d+$/.test(qid)) {
-              idValue = qid;
-            } else {
-              throw new Error('No valid "id" parameter found in URL.');
-            }
-          } catch (e) {
-            outputDiv.textContent = '❌ Error: Invalid URL provided.';
-            return;
+      // 1. If the URL field is nonempty, attempt to extract “id=####”
+      if (sttmUrl) {
+        try {
+          const parsed = new URL(sttmUrl);
+          const qid = parsed.searchParams.get('id');
+          if (qid && /^\d+$/.test(qid)) {
+            idValue = qid;
+          } else {
+            throw new Error('No numeric “id” query parameter in URL.');
           }
+        } catch (e) {
+          outputDiv.textContent = '❌ Error: Invalid URL provided.';
+          return;
         }
+      }
 
-        // 2. If URL field was empty or invalid, fallback to numeric field
-        if (!idValue) {
-          const numericId = shabadInput.value.trim();
-          if (!numericId) {
-            outputDiv.textContent = '⚠️ Please enter a numeric Shabad ID or a valid URL.';
-            return;
+      // 2. Otherwise, fall back to the numeric input
+      if (!idValue) {
+        if (!shabadInput) {
+          outputDiv.textContent = '⚠️ Please enter a numeric Shabad ID or a valid URL.';
+          return;
+        }
+        idValue = shabadInput;
+      }
+
+      outputDiv.textContent = '⏳ Fetching Shabad …';
+
+      fetch(`https://api.banidb.com/v2/shabads/${encodeURIComponent(idValue)}`)
+        .then(resp => {
+          if (!resp.ok) throw new Error('HTTP ' + resp.status);
+          return resp.json();
+        })
+        .then(json => {
+          const versesArr = json.verses;
+          if (!Array.isArray(versesArr) || versesArr.length === 0) {
+            throw new Error('No verses found for that ID.');
           }
-          idValue = numericId;
-        }
 
-        outputDiv.textContent = '⏳ Fetching Shabad …';
-
-        const url = 'https://api.banidb.com/v2/shabads/' + encodeURIComponent(idValue);
-
-        fetch(url)
-          .then(resp => {
-            if (!resp.ok) throw new Error('HTTP ' + resp.status);
-            return resp.json();
-          })
-          .then(json => {
-            const versesArr = json.verses;
-            if (!Array.isArray(versesArr) || versesArr.length === 0) {
-              throw new Error('No verses found for that ID.');
-            }
-
-            const romanizedLines = versesArr.map(item => {
-              const gurmukhiLine = (
-                item.verse &&
-                typeof item.verse.unicode === 'string'
-              ) ? item.verse.unicode : '';
-
-              if (hasGurmukhi && gurmukhiLine) {
-                try {
-                  return Sanscript.t(gurmukhiLine, 'gurmukhi', 'iso');
-                } catch(e) {
-                  console.warn('Error transliterating via Sanscript, using fallback.', e);
-                }
-              }
-
-              return (
-                item.transliteration &&
-                typeof item.transliteration.en === 'string'
-              ) ? item.transliteration.en : '';
-            });
-
-            const combined = romanizedLines.join('\n');
-            outputDiv.textContent = combined;
-          })
-          .catch(err => {
-            outputDiv.textContent = '❌ Error: ' + err.message;
-            console.error(err);
+          // 3. For each verse, pull verse.unicode (Gurmukhi) → ISO 15919
+          const romanizedLines = versesArr.map(item => {
+            const gurmukhiLine = item.verse && item.verse.unicode;
+            return transliterateGurmukhiToISO(gurmukhiLine || '');
           });
-      });
-    })();
+
+          outputDiv.textContent = romanizedLines.join('\n');
+        })
+        .catch(err => {
+          console.error(err);
+          outputDiv.textContent = '❌ Error: ' + err.message;
+        });
+    });
   </script>
 </body>
 </html>
