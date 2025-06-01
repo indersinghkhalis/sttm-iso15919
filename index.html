@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>BaniDB Shabad → ISO 15919 (Custom Transliterator)</title>
+  <title>BaniDB Shabad → ISO 15919 (Custom Translilator)</title>
 
   <style>
     body {
@@ -25,11 +25,6 @@
       padding: 0.5rem 0.8rem;
       cursor: pointer;
       font-size: 1rem;
-    }
-    #notice {
-      margin-top: 0.5rem;
-      font-size: 0.85rem;
-      color: #555;
     }
     #output {
       margin-top: 1.5rem;
@@ -63,7 +58,7 @@
     // ① CUSTOM GURMUKHI→ISO 15919 MAPPINGS (per Wikipedia ISO 15919 table)
     // ─────────────────────────────────────────────────────────────────────────────
 
-    // Independent vowels (U+0A05…U+0A14, U+0A0B)
+    // Independent vowels (U+0A05…U+0A14)
     const independentVowelMap = {
       '\u0A05': 'a',   // ਅ
       '\u0A06': 'ā',   // ਆ
@@ -90,15 +85,15 @@
       '\u0A1D': 'jh',  // ਝ
       '\u0A1E': 'ñ',   // ਞ
       '\u0A1F': 'ṭ',   // ਟ
-      '\u0A20': 'ṭh',  // ઠ
+      '\u0A20': 'ṭh',  // ਠ
       '\u0A21': 'ḍ',   // ਡ
       '\u0A22': 'ḍh',  // ਢ
-      '\u0A5C': 'ṛ', // ੜ
+      '\u0A5C': 'ṛ',   // ੜ
       '\u0A23': 'ṇ',   // ਣ
       '\u0A24': 't',   // ਤ
       '\u0A25': 'th',  // ਥ
       '\u0A26': 'd',   // ਦ
-      '\u0A27': 'dh',  // ধ
+      '\u0A27': 'dh',  // ਧ
       '\u0A28': 'n',   // ਨ
       '\u0A2A': 'p',   // ਪ
       '\u0A2B': 'ph',  // ਫ
@@ -112,38 +107,44 @@
       '\u0A35': 'v',   // ਵ
       '\u0A36': 'ś',   // ਸ਼
       '\u0A38': 's',   // ਸ
-      '\u0A39': 'h',   // ਹ
+      '\u0A39': 'h'    // ਹ
     };
 
-    // Dependent vowel signs (U+0A3E..U+0A4C, U+0A43..U+0A44)
+    // Dependent vowel signs (U+0A3E..U+0A4C)
     const vowelSignMap = {
-      '\u0A3E': 'ā',   // ◌ਾ  (sign for ਆ)
-      '\u0A3F': 'i',   // ◌ਿ  (sign for ਇ)
-      '\u0A40': 'ī',   // ◌ੀ  (sign for ਈ)
-      '\u0A41': 'u',   // ◌ੁ  (sign for ਉ)
-      '\u0A42': 'ū',   // ◌ੂ  (sign for ਊ)
-      '\u0A47': 'ē',   // ◌ੇ  (sign for ਏ)
-      '\u0A48': 'ai',  // ◌ੈ  (sign for ਐ)
-      '\u0A4B': 'ō',   // ◌ੋ  (sign for ਓ)
-      '\u0A4C': 'au'   // ◌ੌ  (sign for ਔ)
+      '\u0A3E': 'ā',   // ◌ਾ
+      '\u0A3F': 'i',   // ◌ਿ
+      '\u0A40': 'ī',   // ◌ੀ
+      '\u0A41': 'u',   // ◌ੁ
+      '\u0A42': 'ū',   // ◌ੂ
+      '\u0A47': 'ē',   // ◌ੇ
+      '\u0A48': 'ai',  // ◌ੈ
+      '\u0A4B': 'ō',   // ◌ੋ
+      '\u0A4C': 'au'   // ◌ੌ
     };
 
-    // Diacritics and nukta/virama (anusvara, visarga, candrabindu, halant)
+    // Diacritics and nukta/virama (candrabindu, tippi, anusvāra, visarga, halant)
     const diacriticMap = {
-      '\u0A01': 'm̐',   // chandrabindu ◌ਁ
-      '\u0A70': 'ṃ', // tippi
-      '\u0A02': 'ṁ',   // bindi ◌ਂ
+      '\u0A01': 'm̐',  // chandrabindu ◌ਁ
+      '\u0A70': 'ṃ',   // tippi ੰ
+      '\u0A02': 'ṁ',   // bindi/anusvāra ◌ਂ
       '\u0A03': 'ḥ',   // visarga ◌ਃ
-      '\u0A4D': '',    // virama ◌੍  (remove the inherent 'a')
+      '\u0A4D': ''     // virama ◌੍  (remove the inherent 'a')
     };
 
-    const digitsMap = {
-      '\u0A66': '0', '\u0A67': '1', '\u0A68': '2', '\u0A69': '3',
-      '\u0A6A': '4', '\u0A6B': '5', '\u0A6C': '6', '\u0A6D': '7',
-      '\u0A6E': '8', '\u0A6F': '9'
+    // Gurmukhi digits U+0A66..U+0A6F → ASCII 0..9
+    const digitMap = {
+      '\u0A66': '0',
+      '\u0A67': '1',
+      '\u0A68': '2',
+      '\u0A69': '3',
+      '\u0A6A': '4',
+      '\u0A6B': '5',
+      '\u0A6C': '6',
+      '\u0A6D': '7',
+      '\u0A6E': '8',
+      '\u0A6F': '9'
     };
-
-    // Everything else (punctuation, spaces, digits) passes unchanged.
 
     // ──────────────────────────────────────────────────────────────────────────
     // ② GURMUKHI → ISO 15919 TRANSLITERATOR FUNCTION
@@ -153,49 +154,56 @@
       const output = [];
       let lastWasConsonant = false;
 
-      // Iterate over codepoints (handles combined chars correctly)
       for (const ch of input) {
         if (independentVowelMap[ch]) {
-          // A standalone independent vowel
+          // Independent vowel
           output.push(independentVowelMap[ch]);
           lastWasConsonant = false;
 
         } else if (consonantMap[ch]) {
-          // A consonant: emit base + 'a' (inherent vowel) for now
+          // Consonant → base + inherent 'a'
           output.push(consonantMap[ch] + 'a');
           lastWasConsonant = true;
 
         } else if (vowelSignMap[ch]) {
-          // A dependent vowel sign: combine with previous consonant
+          // Dependent vowel sign → attach to previous consonant
           if (lastWasConsonant && output.length > 0) {
-            // Replace trailing "…a" with "…(vowel)"
-            const prev = output.pop();
-            // Remove exactly one trailing 'a'
-            const base = prev.endsWith('a') ? prev.slice(0, -1) : prev;
-            output.push(base + vowelSignMap[ch]);
+            let prev = output.pop();
+            if (prev.endsWith('a')) {
+              prev = prev.slice(0, -1);
+            }
+            output.push(prev + vowelSignMap[ch]);
           } else {
-            // No consonant to attach: treat as independent (fallback)
+            // No consonant to attach → standalone vowel
             output.push(vowelSignMap[ch]);
           }
           lastWasConsonant = false;
 
         } else if (diacriticMap[ch] !== undefined) {
-          // A diacritic: append its mapping (or drop in case of virama)
+          // Diacritic or virama
           if (ch === '\u0A4D' && lastWasConsonant && output.length > 0) {
-            // Remove trailing 'a' from previous consonant (explicit virama)
-            const prev = output.pop();
-            const base = prev.endsWith('a') ? prev.slice(0, -1) : prev;
-            output.push(base);
-          } else if (diacriticMap[ch]) {
-            output.push(diacriticMap[ch]);
-          } 
+            // Virama → remove trailing 'a'
+            let prev = output.pop();
+            if (prev.endsWith('a')) {
+              prev = prev.slice(0, -1);
+            }
+            output.push(prev);
+          } else {
+            // Candrabindu/tippi/anusvāra/visarga
+            const dm = diacriticMap[ch];
+            if (dm) {
+              output.push(dm);
+            }
+          }
           lastWasConsonant = false;
 
-        } else if (digitsMap[ch]) {
-            output.push(digitsMap[ch]);
-            lastWasConsonant = false;
-        }else {
-          // Any other character: pass unchanged (spaces, punctuation)
+        } else if (digitMap[ch]) {
+          // Gurmukhi digit → ASCII digit
+          output.push(digitMap[ch]);
+          lastWasConsonant = false;
+
+        } else {
+          // Everything else (spaces, punctuation) passes unchanged
           output.push(ch);
           lastWasConsonant = false;
         }
@@ -214,7 +222,7 @@
       const outputDiv   = document.getElementById('output');
       let idValue = '';
 
-      // 1. If the URL field is nonempty, attempt to extract “id=####”
+      // 1. If URL field is nonempty, extract “id=####”
       if (sttmUrl) {
         try {
           const parsed = new URL(sttmUrl);
@@ -230,7 +238,7 @@
         }
       }
 
-      // 2. Otherwise, fall back to the numeric input
+      // 2. Otherwise, use numeric input
       if (!idValue) {
         if (!shabadInput) {
           outputDiv.textContent = '⚠️ Please enter a numeric Shabad ID or a valid URL.';
@@ -252,7 +260,7 @@
             throw new Error('No verses found for that ID.');
           }
 
-          // 3. For each verse, pull verse.unicode (Gurmukhi) → ISO 15919
+          // 3. For each verse, get verse.unicode (Gurmukhi) and transliterate
           const romanizedLines = versesArr.map(item => {
             const gurmukhiLine = item.verse && item.verse.unicode;
             return transliterateGurmukhiToISO(gurmukhiLine || '');
