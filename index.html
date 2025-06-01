@@ -137,7 +137,7 @@
       '\u0A4D': '',    // virama ◌੍  (remove the inherent 'a')
     };
 
-    const digitMap = {
+    const digitsMap = {
       '\u0A66': '0', '\u0A67': '1', '\u0A68': '2', '\u0A69': '3',
       '\u0A6A': '4', '\u0A6B': '5', '\u0A6C': '6', '\u0A6D': '7',
       '\u0A6E': '8', '\u0A6F': '9'
@@ -188,12 +188,13 @@
             output.push(base);
           } else if (diacriticMap[ch]) {
             output.push(diacriticMap[ch]);
-          } else if (digitsMap[ch]) {
-            output.push(digitsMap[ch]);
-          }
+          } 
           lastWasConsonant = false;
 
-        } else {
+        } else if (digitsMap[ch]) {
+            output.push(digitsMap[ch]);
+            lastWasConsonant = false;
+        }else {
           // Any other character: pass unchanged (spaces, punctuation)
           output.push(ch);
           lastWasConsonant = false;
