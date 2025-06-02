@@ -31,7 +31,7 @@
       font-size: 0.85rem;
       color: #555;
     }
-    #output {
+    #output, #gurmukhiOutput {
       margin-top: 1.5rem;
       padding: 0.8rem;
       background: #f9f9f9;
@@ -57,6 +57,8 @@
   </div>
 
   <div id="output">Enter a Shabad ID or URL above and click “Go.”</div>
+
+  <div id ="gurmukhiOutput"> Waiting for transliteration ⏳⏳ </div>
 
   <script>
     // ─────────────────────────────────────────────────────────────────────────────
@@ -212,6 +214,7 @@
       const shabadInput = document.getElementById('shabadId').value.trim();
       const sttmUrl     = document.getElementById('sttmUrl').value.trim();
       const outputDiv   = document.getElementById('output');
+      const gurmukhiOutputDiv = document.getElementById('gurmukhiOutput');
       let idValue = '';
 
       // 1. If the URL field is nonempty, attempt to extract “id=####”
@@ -226,6 +229,7 @@
           }
         } catch (e) {
           outputDiv.textContent = '❌ Error: Invalid URL provided.';
+          gurmukhiOutputDiv.textContent = '❌';
           return;
         }
       }
@@ -234,12 +238,14 @@
       if (!idValue) {
         if (!shabadInput) {
           outputDiv.textContent = '⚠️ Please enter a numeric Shabad ID or a valid URL.';
+          gurmukhiOutputDiv.textContent = '⚠️';
           return;
         }
         idValue = shabadInput;
       }
 
       outputDiv.textContent = '⏳ Fetching Shabad …';
+      gurmukhiOutputDiv.textContent = '⏳';
 
       fetch(`https://api.banidb.com/v2/shabads/${encodeURIComponent(idValue)}`)
         .then(resp => {
@@ -258,7 +264,13 @@
             return transliterateGurmukhiToISO(gurmukhiLine || '');
           });
 
+          const gurmukhiLines = versesArr.map(item => {
+            return item.verse && item.verse.unicode;
+          });
+
+
           outputDiv.textContent = romanizedLines.join('\n');
+          gurmukhiOutputDiv.textContent = gurmukhiLines.join('\n');
         })
         .catch(err => {
           console.error(err);
